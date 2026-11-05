@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoría ISO/IEC 27001:2022</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #08090a;
+  --surface: #0f1011;
+  --raised: #1a1b1e;
+  --fg: #f7f8f8;
+  --fg2: #d0d6e0;
+  --muted: #8a8f98;
+  --border: rgba(255, 255, 255, .06);
+  --border-strong: rgba(255, 255, 255, .1);
+  --accent: #7170ff;
+  --ok: #27a644;
+  --warn: #f2994a;
+  --pend: #e2a336;
+  --err: #eb5757;
+  --font: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --mono: 'Berkeley Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 14px/1.5 var(--font);
+  font-feature-settings: "cv01", "ss03";
+  letter-spacing: -.011em;
+}
+header, footer {
+  padding: 12px 16px;
+  background: var(--surface);
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+h1 { margin: 0; font-size: 14px; font-weight: 600; }
+.meta, footer { color: var(--muted); font-size: 13px; }
+.btn {
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--fg2);
+  font: 500 13px var(--font);
+  cursor: pointer;
+}
+#reload { margin-inline-start: auto; }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.btn:hover { background: #23252a; color: var(--fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+main { flex: 1; min-height: 0; overflow: auto; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th, td {
+  min-width: 180px;
+  max-width: 280px;
+  padding: 8px 12px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+td {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg2);
+  font-size: 13px;
+  vertical-align: top;
+  white-space: pre-wrap;
+}
+tr:hover td { background: #0c0d0e; }
+th:first-child, td:first-child {
+  position: sticky;
+  left: 0;
+  min-width: 64px;
+  border-right: 1px solid var(--border);
+}
+th:first-child { z-index: 3; }
+td:first-child {
+  z-index: 1;
+  background: var(--surface);
+  color: var(--muted);
+  font: 400 12px/1.5 var(--mono);
+}
+td[data-estado="Cumple"] { color: var(--ok); }
+td[data-estado="No cumple"], td[data-estado="Alto"], .err { color: var(--err); }
+td[data-estado="Medio"] { color: var(--warn); }
+td[data-estado="Bajo"] { color: var(--pend); }
+.empty { margin: 0; padding: 48px 24px; color: var(--muted); }
+footer { border-top: 1px solid var(--border); }
+@media (min-width: 48rem) {
+  header { padding: 16px 24px; }
+  footer { padding-inline: 24px; }
+  .btn { min-height: 28px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Auditoría ISO/IEC 27001:2022</h1>
+  <span class="meta" id="count"></span>
+  <button class="btn" id="reload" type="button">Recargar desde Sheets</button>
+  <a class="btn" href="crud.html">Editar tabla</a>
+</header>
+<main aria-label="Tabla de auditoría" tabindex="0">
+  <table id="grid" aria-labelledby="title" hidden>
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+  <p id="empty" class="empty" hidden>La hoja no contiene filas de datos.</p>
+  <noscript><p class="empty">Activa JavaScript para cargar la tabla desde Google Sheets.</p></noscript>
+</main>
+<footer><span id="status" role="status"></span></footer>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbyj8gd3xOdlOUD0EpdUTKh-uJFScnc6-lN-SNQ53d0QbVKobwsSrSH2wVOluD_uBhp6nkpw0r0jR6/pub?output=csv";
+
+const grid = document.querySelector("#grid");
+const count = document.querySelector("#count");
+const empty = document.querySelector("#empty");
+const status = document.querySelector("#status");
+const reload = document.querySelector("#reload");
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = text.startsWith("\uFEFF") ? 1 : 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+    } else if (char === '"' && cell === "") {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  if (cell !== "" || row.length) rows.push([...row, cell]);
+  return rows.filter(values => values.some(value => value.trim() !== ""));
+}
+
+function render([headers = [], ...rows]) {
+  const heading = document.createElement("tr");
+  for (const label of headers) {
+    const th = document.createElement("th");
+    th.scope = "col";
+    th.textContent = label;
+    heading.append(th);
+  }
+
+  const body = document.createDocumentFragment();
+  for (const values of rows) {
+    const tr = document.createElement("tr");
+    headers.forEach((label, index) => {
+      const td = tr.insertCell();
+      td.textContent = values[index] ?? "";
+      if (label === "Resultado" || label === "Nivel de riesgo") {
+        td.dataset.estado = td.textContent.trim();
+      }
+    });
+    body.append(tr);
+  }
+
+  grid.tHead.replaceChildren(heading);
+  grid.tBodies[0].replaceChildren(body);
+  grid.hidden = headers.length === 0;
+  empty.hidden = rows.length > 0;
+  count.textContent = rows.length === 1 ? "1 fila" : `${rows.length} filas`;
+}
+
+async function load() {
+  reload.disabled = true;
+  status.classList.remove("err");
+  status.textContent = "Cargando datos…";
+  try {
+    const response = await fetch(`${CSV_URL}&t=${Date.now()}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    render(parseCSV(await response.text()));
+    status.textContent = "Datos cargados desde Google Sheets.";
+  } catch {
+    status.classList.add("err");
+    status.textContent = "No se pudo cargar la hoja. Intenta recargar desde Sheets.";
+  } finally {
+    reload.disabled = false;
+  }
+}
+
+reload.addEventListener("click", load);
+load();
+</script>
+</body>
+</html>
