@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+  logs: false;
+}
+
+/*
+ * Tema institucional. Paleta oficial:
+ *   Pale Mint   #CFEBE1  (fondo, superficies)
+ *   Midnight    #002941  (primario, navegación, textos)
+ *   Coral       #FD6E6E  (acciones principales, énfasis)
+ * Blanco solo como superficie de contenido.
+ */
+@plugin "daisyui/theme" {
+  name: "institucional";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #cfebe1;
+  --color-base-200: #c2e3d6;
+  --color-base-300: #aed8c8;
+  --color-base-content: #002941;
+  --color-primary: #002941;
+  --color-primary-content: #cfebe1;
+  --color-secondary: #fd6e6e;
+  --color-secondary-content: #002941;
+  --color-accent: #fd6e6e;
+  --color-accent-content: #002941;
+  --color-neutral: #002941;
+  --color-neutral-content: #cfebe1;
+  --color-info: #002941;
+  --color-info-content: #cfebe1;
+  --color-success: #002941;
+  --color-success-content: #cfebe1;
+  --color-warning: #fd6e6e;
+  --color-warning-content: #002941;
+  --color-error: #fd6e6e;
+  --color-error-content: #002941;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid #fd6e6e;
+    outline-offset: 2px;
+  }
+  body {
+    background-color: var(--color-base-100);
+    color: var(--color-base-content);
+  }
+}
