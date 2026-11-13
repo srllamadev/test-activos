@@ -1,9 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 
 export interface AuthFormState {
   error?: string;
@@ -18,11 +17,13 @@ const loginSchema = z.object({
   next: z.string().optional(),
 });
 
-/** Solo permite redirecciones internas (evita open redirect). */
 function safeNext(value: string | undefined): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
   return value;
 }
+
+const COOKIE_NAME = "auth_token";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 días
 
 export async function signInAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const parsed = loginSchema.safeParse({
@@ -34,46 +35,104 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
     return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-  if (error) {
-    // Mensaje genérico para no revelar si el correo existe.
-    return { error: "Correo o contraseña incorrectos." };
+  let accessToken: string;
+  try {
+    const response = await fetch(`${apiUrl}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.detail || "Correo o contraseña incorrectos." };
+    }
+
+    const tokenResponse = await response.json();
+    accessToken = tokenResponse.access_token;
+  } catch (error) {
+    console.error("Login error:", error);
+    return { error: "Error de conexión con el servidor." };
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
 
   redirect(safeNext(parsed.data.next));
 }
 
 export async function signOutAction() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
   redirect("/login");
 }
 
-export async function requestPasswordResetAction(
-  _prev: AuthFormState,
-  formData: FormData,
-): Promise<AuthFormState> {
-  const parsed = emailSchema.safeParse(formData.get("email"));
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Correo no válido." };
+export async function getAuthToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(COOKIE_NAME)?.value ?? null;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  is_active: boolean;
+  is_superuser?: boolean;
+  created_at: string;
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const token = await getAuthToken();
+  if (!token) return null;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+  try {
+    const response = await fetch(`${apiUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
   }
+}
 
-  const supabase = await createClient();
-  const h = await headers();
-  const origin = h.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${origin}/auth/callback?next=/restablecer`,
-  });
+export interface Organization {
+  id: string;
+  name: string;
+  short_name?: string;
+  role: string;
+}
 
-  // Respuesta neutra: no se revela si la cuenta existe.
-  return {
-    success: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
-  };
+export async function getMyOrganizations(): Promise<Organization[]> {
+  const token = await getAuthToken();
+  if (!token) return [];
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+  try {
+    const response = await fetch(`${apiUrl}/auth/me/organizations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return [];
+    return response.json();
+  } catch {
+    return [];
+  }
 }
 
 const passwordSchema = z
@@ -91,6 +150,20 @@ const passwordSchema = z
     path: ["confirm"],
   });
 
+export async function requestPasswordResetAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = emailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Correo no válido." };
+  }
+
+  return {
+    success: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+  };
+}
+
 export async function updatePasswordAction(
   _prev: AuthFormState,
   formData: FormData,
@@ -103,16 +176,5 @@ export async function updatePasswordAction(
     return { error: parsed.error.issues[0]?.message ?? "Contraseña no válida." };
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) {
-    return { error: "El enlace expiró o no es válido. Solicita uno nuevo." };
-  }
-
-  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) {
-    return { error: "No se pudo actualizar la contraseña. Solicita un nuevo enlace." };
-  }
-
-  redirect("/");
+  return { error: "Funcionalidad pendiente de implementar." };
 }

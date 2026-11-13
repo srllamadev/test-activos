@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthToken, getCurrentUser, getMyOrganizations } from "@/features/auth/actions";
 
 export type Role = "admin" | "editor" | "viewer";
 
@@ -34,35 +34,30 @@ export function isAdmin(role: Role): boolean {
  * ninguna organización, muestra la pantalla de acceso pendiente.
  */
 export const getAuthContext = cache(async (): Promise<AuthContext> => {
-  const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
+  const token = await getAuthToken();
+  if (!token) {
     redirect("/login");
   }
 
-  const { data: memberships, error } = await supabase
-    .from("organization_members")
-    .select("role, created_at, organizations(id, name, time_zone)")
-    .eq("user_id", userData.user.id)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw new Error("No se pudo cargar la membresía de la organización.");
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
   }
 
-  const first = memberships?.[0];
-  const org = first?.organizations as unknown as { id: string; name: string; time_zone: string } | null;
-  if (!first || !org) {
+  const organizations = await getMyOrganizations();
+  if (!organizations || organizations.length === 0) {
     redirect("/acceso-pendiente");
   }
 
+  const firstOrg = organizations[0];
+
   return {
-    userId: userData.user.id,
-    email: userData.user.email ?? null,
-    organizationId: org.id,
-    organizationName: org.name,
-    timeZone: org.time_zone,
-    role: first.role as Role,
+    userId: user.id,
+    email: user.email,
+    organizationId: firstOrg.id,
+    organizationName: firstOrg.name,
+    timeZone: "America/Bogota",
+    role: firstOrg.role as Role,
   };
 });
 

@@ -3,11 +3,16 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str
+    # Database - Direct PostgreSQL (for migrations)
+    DATABASE_URL: str = ""
+    
+    # Supabase REST API
+    SUPABASE_URL: str = "https://xaapvdtsqbytkxsozusq.supabase.co"
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
     
     # JWT
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     

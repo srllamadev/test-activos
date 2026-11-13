@@ -1,16 +1,38 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
 
 /** Rutas accesibles sin sesión. */
 const PUBLIC_PATHS = ["/login", "/recuperar", "/restablecer", "/auth/callback"];
 
-export async function proxy(request: NextRequest) {
-  const { response, user } = await updateSession(request);
-  const { pathname } = request.nextUrl;
+const COOKIE_NAME = "auth_token";
 
+/**
+ * Verifica si hay un token JWT válido en las cookies.
+ */
+async function verifyToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
-  if (!user && !isPublic) {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  let isAuthenticated = false;
+
+  if (token) {
+    isAuthenticated = await verifyToken(token);
+  }
+
+  if (!isAuthenticated && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -18,14 +40,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
+  if (isAuthenticated && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next({ request });
 }
 
 export const config = {
