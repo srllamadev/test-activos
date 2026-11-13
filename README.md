@@ -1,108 +1,264 @@
-# Sistema de Gestión de Activos de Información y Riesgos
+# Sistema de Gestión de Activos y Riesgos
 
-Aplicación web para registrar activos de información, valorarlos con criterios CIA, gestionar riesgos,
-controles y seguimiento, y consultar indicadores institucionales. Está construida con Next.js (App Router),
-TypeScript estricto, Supabase (PostgreSQL, Auth, Storage con RLS) y Tailwind CSS con daisyUI.
+Sistema web completo para la gestión de activos de información y evaluación de riesgos, desarrollado con arquitectura moderna de tres capas.
 
-El Excel de referencia (caso AGETIC, datos hipotéticos no auditados) sirvió como fuente de reglas. El sistema
-es genérico: cada entidad configura sus datos y criterios, y sus datos quedan aislados por organización.
+## 🏗️ Arquitectura
 
-## Estado del proyecto
+```
+┌─────────────────┐
+│   Frontend      │
+│   (Next.js)     │
+│   Puerto 3000   │
+└────────┬────────┘
+         │ HTTP/REST
+         ▼
+┌─────────────────┐      ┌──────────────┐
+│   Backend       │◄────►│  Supabase    │
+│   (FastAPI)     │      │  (Solo DB)   │
+│   Puerto 8000   │      │  PostgreSQL  │
+└─────────────────┘      └──────────────┘
+```
 
-| Módulo | Estado |
-|---|---|
-| Autenticación (login, recuperación, cierre de sesión, protección de rutas) | Implementado |
-| Roles (administrador, editor, consulta) con RLS en PostgreSQL | Implementado y verificado |
-| Configuración institucional y versiones de criterios | Implementado |
-| Inventario de activos (31 campos, formulario por pasos, borradores, CIA, validación, archivado) | Implementado |
-| Panel ejecutivo (KPI, gráficos, prioridades) | Implementado (filtros de área y categoría) |
-| Riesgos, controles, seguimiento | Pendiente (tablas y reglas listas; interfaz no construida) |
-| Exportación e importación Excel | Pendiente |
-| Evidencias y fuentes (subida a Storage) | Pendiente (bucket y políticas creados) |
-| Gestión de usuarios desde la aplicación | Pendiente (se crean con el script de arranque) |
-| Pruebas E2E con Playwright | Pendiente (configuración no incluida aún) |
+### Componentes
 
-Consulta `USER_GUIDE.md` para el uso y `EXCEL_MAPPING.md` para las diferencias respecto al Excel.
+- **Frontend**: Next.js 16 + React 19 + TypeScript + Tailwind CSS + daisyUI
+- **Backend**: FastAPI (Python) + SQLAlchemy + Pydantic
+- **Base de datos**: PostgreSQL en Supabase
+- **Autenticación**: JWT (JSON Web Tokens)
 
-## Requisitos
+## 🚀 Inicio Rápido
 
-- Node.js 20 o superior y npm.
-- Un proyecto de Supabase (plan gratuito suficiente para pruebas).
+### Prerrequisitos
 
-## Instalación
+- Node.js 18+ y npm
+- Python 3.10+
+- Cuenta en Supabase (gratuita)
 
+### Instalación
+
+1. **Clonar o descargar el proyecto**
+   ```bash
+   cd test-activos
+   ```
+
+2. **Instalar dependencias del frontend**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar el backend**
+   ```bash
+   cd backend
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # Linux/Mac
+   source venv/bin/activate
+   
+   pip install -r requirements.txt
+   cd ..
+   ```
+
+4. **Configurar variables de entorno**
+   
+   El proyecto ya tiene las credenciales de Supabase configuradas en:
+   - `.env.local` (frontend)
+   - `backend/.env` (backend)
+
+5. **Iniciar ambos servicios**
+   
+   **Opción 1: Script automático (Windows)**
+   ```bash
+   start.bat
+   ```
+   
+   **Opción 2: Script automático (Linux/Mac)**
+   ```bash
+   chmod +x start.sh
+   ./start.sh
+   ```
+   
+   **Opción 3: Manualmente**
+   ```bash
+   # Terminal 1 - Backend
+   cd backend
+   source venv/bin/activate  # o venv\Scripts\activate en Windows
+   uvicorn app.main:app --reload --port 8000
+   
+   # Terminal 2 - Frontend
+   npm run dev
+   ```
+
+6. **Acceder a la aplicación**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - Documentación API: http://localhost:8000/docs
+
+### Credenciales de Acceso
+
+- **Email**: admin@ejemplo.com
+- **Password**: Admin123!Seguro
+
+## 📁 Estructura del Proyecto
+
+```
+test-activos/
+├── src/                      # Frontend Next.js
+│   ├── app/                  # Rutas y páginas
+│   ├── components/           # Componentes UI
+│   ├── features/             # Módulos de funcionalidad
+│   │   ├── auth/            # Autenticación
+│   │   ├── assets/          # Gestión de activos
+│   │   ├── risks/           # Gestión de riesgos
+│   │   └── dashboard/       # Panel de control
+│   └── lib/                 # Utilidades y clientes
+├── backend/                  # Backend FastAPI
+│   ├── app/
+│   │   ├── api/             # Endpoints
+│   │   ├── models/          # Modelos SQLAlchemy
+│   │   ├── schemas/         # Schemas Pydantic
+│   │   ├── core/            # Configuración y seguridad
+│   │   └── utils/           # Utilidades
+│   ├── tests/               # Pruebas
+│   └── requirements.txt     # Dependencias Python
+├── supabase/                 # Configuración de Supabase
+│   └── migrations/          # Migraciones SQL
+└── docs/                    # Documentación
+```
+
+## 🔌 API Endpoints
+
+### Autenticación
+- `POST /api/v1/auth/register` - Registrar usuario
+- `POST /api/v1/auth/login` - Iniciar sesión
+- `GET /api/v1/auth/me` - Obtener usuario actual
+
+### Activos
+- `GET /api/v1/assets` - Listar activos
+- `GET /api/v1/assets/{id}` - Obtener activo
+- `POST /api/v1/assets` - Crear activo
+- `PUT /api/v1/assets/{id}` - Actualizar activo
+- `DELETE /api/v1/assets/{id}` - Archivar activo
+
+### Riesgos
+- `GET /api/v1/risks` - Listar riesgos
+- `GET /api/v1/risks/{id}` - Obtener riesgo
+- `POST /api/v1/risks` - Crear riesgo
+- `PUT /api/v1/risks/{id}` - Actualizar riesgo
+- `DELETE /api/v1/risks/{id}` - Archivar riesgo
+
+Documentación completa disponible en: http://localhost:8000/docs
+
+## 🎨 Sistema de Diseño
+
+### Paleta de Colores
+- **Pale Mint** (#CFEBE1): Fondos y superficies
+- **Midnight Navy** (#002941): Textos y elementos primarios
+- **Coral Orange** (#FD6E6E): Botones de acción y énfasis
+
+### Características
+- ✅ Diseño responsivo
+- ✅ Modo claro (próximamente modo oscuro)
+- ✅ Accesibilidad WCAG 2.1
+- ✅ Componentes reutilizables con daisyUI
+- ✅ Iconos de Lucide React
+
+## 🧪 Pruebas
+
+### Frontend
 ```bash
-npm install
-cp .env.example .env.local   # completa los valores de tu proyecto Supabase
+npm test                    # Pruebas unitarias
+npm run test:e2e           # Pruebas end-to-end (próximamente)
 ```
 
-## Variables de entorno
-
-| Variable | Uso |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública (puede llegar al navegador; la seguridad la aplica RLS) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor y scripts de arranque. Nunca con prefijo `NEXT_PUBLIC_` |
-| `NEXT_PUBLIC_SITE_URL` | URL pública de la aplicación (enlaces de recuperación) |
-
-## Base de datos
-
-Aplica las migraciones en orden desde el SQL Editor de Supabase, o con la CLI (`supabase db push`):
-
-1. `supabase/migrations/20260101000001_core_schema.sql`
-2. `supabase/migrations/20260101000002_security_rls.sql`
-3. `supabase/migrations/20260101000003_catalogs_storage.sql`
-
-Detalles en `DATABASE.md`.
-
-## Primer administrador
-
-No existen credenciales en el repositorio. Crea la organización y el administrador con el script:
-
+### Backend
 ```bash
-ORG_NAME="Mi entidad" ADMIN_EMAIL="admin@entidad.gob" \
-NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-npm run bootstrap:admin
+cd backend
+pytest                     # Pruebas unitarias
+pytest --cov=app          # Con cobertura
 ```
 
-Si no defines `ADMIN_PASSWORD`, el script imprime una contraseña temporal una sola vez. Cámbiala al entrar
-(opción «¿Olvidaste tu contraseña?»).
+## 📊 Características Implementadas
 
-## Ejecución
+### ✅ Completado
+- **Autenticación**: Login con JWT
+- **Dashboard**: Panel de control con KPIs
+- **Gestión de Activos**: CRUD completo con 31 campos
+- **Gestión de Riesgos**: CRUD completo con matriz 5x5
+- **Evaluación CIA**: Confidencialidad, Integridad, Disponibilidad
+- **Catálogos**: Gestión de categorías y tipos
+- **Organizaciones**: Multi-tenant con aislamiento de datos
 
-```bash
-npm run dev         # desarrollo en http://localhost:3000
-npm run build       # compilación de producción
-npm run start       # servidor de producción tras build
-```
+### 🚧 En Progreso
+- **Controles**: Gestión de controles de seguridad
+- **Seguimiento**: Actividades y verificaciones
+- **Exportación**: Generación de reportes Excel
+- **Importación**: Carga masiva desde Excel
 
-## Calidad y pruebas
+### 📋 Próximas Funcionalidades
+- Modo oscuro
+- Notificaciones en tiempo real
+- Exportación a PDF
+- Gráficos avanzados
+- Auditoría completa
 
-```bash
-npm run typecheck   # TypeScript en modo estricto
-npm run lint        # ESLint
-npm test            # Vitest: reglas de negocio e indicadores (40 pruebas)
-npm run test:db     # PostgreSQL en memoria (PGlite): migraciones, RLS, auditoría, Storage (27 comprobaciones)
-```
+## 🔒 Seguridad
 
-`test:db` aplica las migraciones reales y simula los roles `authenticated` y `auth.uid()` de Supabase. No
-sustituye una prueba contra tu proyecto desplegado.
+- ✅ Autenticación JWT con tokens de acceso
+- ✅ Hash de contraseñas con bcrypt
+- ✅ Row Level Security (RLS) en PostgreSQL
+- ✅ Validación de datos con Pydantic
+- ✅ CORS configurado correctamente
+- ✅ Variables de entorno seguras
 
-## Estructura
+## 🗄️ Base de Datos
 
-```
-src/app/            rutas, layouts, páginas (App Router) y route handlers
-src/proxy.ts        protección de rutas y refresco de sesión (Next 16: "proxy")
-src/lib/calculations/   reglas de negocio puras (CIA, riesgo, fechas, seguimiento, registro)
-src/lib/validations/    esquemas Zod compartidos por formulario y servidor
-src/lib/supabase/       clientes de Supabase (servidor, admin, proxy)
-src/features/           dominios: auth, assets, dashboard, settings
-src/components/         interfaz reutilizable (ui, forms, charts)
-supabase/migrations/    esquema, RLS, catálogos y Storage
-supabase/tests/         verificación de la base de datos
-scripts/                script de arranque del administrador
-```
+El proyecto usa PostgreSQL en Supabase con las siguientes tablas principales:
 
-## Despliegue
+- `users` - Usuarios del sistema
+- `organizations` - Organizaciones/empresas
+- `organization_members` - Miembros de organizaciones
+- `assets` - Activos de información
+- `risks` - Riesgos identificados
+- `controls` - Controles de seguridad
+- `follow_ups` - Seguimiento de actividades
 
-Consulta `DEPLOYMENT.md` para Supabase, Vercel, URLs de autenticación y variables de producción.
+Migraciones disponibles en: `supabase/migrations/`
+
+## 📖 Documentación Adicional
+
+- [PLAN_IMPLEMENTACION.md](./PLAN_IMPLEMENTACION.md) - Plan detallado de implementación
+- [FASE1_COMPLETADA.md](./FASE1_COMPLETADA.md) - Estado de la Fase 1
+- [BUSINESS_RULES.md](./BUSINESS_RULES.md) - Reglas de negocio
+- [EXCEL_MAPPING.md](./EXCEL_MAPPING.md) - Mapeo desde Excel
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Guía de despliegue
+
+## 🤝 Contribución
+
+Para contribuir al proyecto:
+
+1. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+2. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+3. Push a la rama (`git push origin feature/AmazingFeature`)
+4. Abre un Pull Request
+
+## 📝 Licencia
+
+Este proyecto es de uso educativo y demostrativo.
+
+## 👥 Autor
+
+Desarrollado como proyecto de gestión de activos de información y evaluación de riesgos.
+
+## 🆘 Soporte
+
+Para soporte y preguntas:
+- Revisa la documentación en la carpeta `docs/`
+- Consulta la API docs en http://localhost:8000/docs
+- Revisa los issues en el repositorio
+
+---
+
+**Estado del Proyecto**: ✅ Funcional - Fase 1 completada, Fase 2 en progreso

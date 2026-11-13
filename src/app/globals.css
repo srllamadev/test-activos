@@ -49,6 +49,7 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   :focus-visible {
     outline: 3px solid #fd6e6e;
@@ -57,5 +58,61 @@
   body {
     background-color: var(--color-base-100);
     color: var(--color-base-content);
+  }
+}
+
+@layer components {
+  /* Botones con transiciones suaves */
+  .btn {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  .btn-accent:hover {
+    @apply brightness-110 shadow-lg transform scale-[1.02];
+  }
+  .btn-primary:hover {
+    @apply brightness-125;
+  }
+  
+  /* Tarjetas con elevación sutil en hover */
+  .card {
+    @apply transition-shadow duration-200;
+  }
+  .card:hover {
+    @apply shadow-lg;
+  }
+  
+  /* Inputs con focus visible */
+  .input:focus,
+  .textarea:focus,
+  .select:focus {
+    @apply ring-2 ring-accent ring-offset-2 ring-offset-base-100 outline-none;
+  }
+  
+  /* Tablas con filas hover */
+  .table tbody tr {
+    @apply transition-colors duration-150;
+  }
+  .table tbody tr:hover {
+    @apply bg-base-200;
+  }
+  
+  /* Badges con animación sutil */
+  .badge {
+    @apply transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  /* Utilidades de espaciado y respiración visual */
+  .breathing-space {
+    @apply space-y-6;
+  }
+  
+  /* Gradientes sutiles para secciones destacadas */
+  .gradient-primary {
+    background: linear-gradient(135deg, #002941 0%, #003d5c 100%);
+  }
+  .gradient-accent {
+    background: linear-gradient(135deg, #fd6e6e 0%, #ff8585 100%);
   }
 }

@@ -2,7 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Boxes,
+  ShieldAlert,
+  ShieldCheck,
+  ClipboardList,
+  BarChart3,
+  FileSpreadsheet,
+  BookMarked,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 import type { NavGroup } from "./nav";
+
+// Mapa de resolución de íconos
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Boxes,
+  ShieldAlert,
+  ShieldCheck,
+  ClipboardList,
+  BarChart3,
+  FileSpreadsheet,
+  BookMarked,
+  Settings,
+};
 
 export function NavLinks({ groups }: { groups: NavGroup[] }) {
   const pathname = usePathname();
@@ -17,7 +42,8 @@ export function NavLinks({ groups }: { groups: NavGroup[] }) {
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-              const Icon = item.icon;
+              const Icon = ICON_MAP[item.icon] || LayoutDashboard; // Fallback por defecto
+              
               if (!item.available) {
                 return (
                   <li key={item.href}>
